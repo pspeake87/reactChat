@@ -5,9 +5,9 @@ var Messages = React.createClass({
       return(
 
           <tr>
-            <td><h5>{this.props.room.messages[0].user}</h5><br/>
-            {this.props.room.messages[0].msg}</td>
-            <td>{this.props.room.messages[0].time}</td>
+            <td className="message"><h5 className="user">{this.props.room.user}</h5>
+            {this.props.room.msg}</td>
+            <td>{this.props.room.time}</td>
           </tr>
 
 
@@ -17,6 +17,16 @@ var Messages = React.createClass({
 
 
 var Room = React.createClass({
+
+  renderMessages: function() {
+    
+      var array = [];
+      for (var i = 0; i < this.props.room.messages.length; i++) {
+          array.push(<Messages room={this.props.room.messages[i]}/>);
+      }
+      return array
+   
+  },
     render: function() {
       return ( 
         <table className="table table-striped">
@@ -27,7 +37,7 @@ var Room = React.createClass({
           </thead>
 
           <tbody>
-            <Messages room={this.props.room}/>
+            {this.renderMessages()}
           </tbody>
         </table>
 
@@ -40,21 +50,39 @@ var Room = React.createClass({
 
 
 var Chat = React.createClass({
-  
+  mixins: [ReactFireMixin],
+ 
+
   getInitialState: function() {
+      
+
       return {
-        rooms: [{name: "Room 1", messages: [{user: "John", msg: "how's it going?", time: "1:34 pm"}, {user: "Bob", msg: "good?", time: "1:35 pm"}, {user: "John", msg: "thats great!", time: "1:36 pm"}]}, {name: "Room 2", messages: [{user: "Phil", msg: "good", time: "1:35 pm"}]}],
+        rooms: [],
         formDisplay: null,
-        roomDisplay: {name: "Welcome to Chat", messages: [{user: "", msg: "", time: ""}]},
-        user: null
+        roomDisplay: null,
+        user: null,
+        message: "",
+      
+        
       };
   },
+
+  componentWillMount: function() {
+   var ref = new Firebase("https://g20ie61vavx.firebaseio-demo.com/reactChat/rooms");
+   this.bindAsArray(ref, "rooms");
+
+  },
+
+  componentWillUpdate: function() {
+ 
+  },
+
 
   componentDidMount() {
     this.hideLightbox1();
     this.hideLightbox2();
-
     this.checkForUser();
+        
   },
 
 
@@ -66,18 +94,34 @@ var Chat = React.createClass({
       }
   },
 
-  hideLightbox1: function() {
-    $('.lightbox1').hide();
+  addMessage: function() {
+    //current time
+    var d = new Date().toLocaleTimeString('en-US', { hour12: true, hour: "numeric", minute: "numeric"});
+    //add message to room
+    
+    this.state.roomDisplay.messages.push({user: this.state.user, msg: this.state.message, time: d});
+    
+    var ref = new Firebase("https://g20ie61vavx.firebaseio-demo.com/reactChat/rooms");
+
+    if (this.state.roomDisplay[".key"]) {
+        var x = ref.child(this.state.roomDisplay[".key"]);
+        var y = x.child("messages");
+        y.set(this.state.roomDisplay.messages)
+        
+    } 
+   
+  
+    
     
 
+  },
 
+  hideLightbox1: function() {
+    $('.lightbox1').hide();
   },
 
   hideLightbox2: function() {
     $('.lightbox2').hide();
-    
-
-
   },
 
   displayRooms: function(rooms) {
@@ -113,18 +157,29 @@ var Chat = React.createClass({
   },
 
   addRoom: function() {
-      this.setState({ 
-          rooms: this.state.rooms.concat({name: this.state.formDisplay, messages: [{user: "", msg: "", time: ""}]})
-      });
+      //add room and change state
+      // this.setState({ 
+      //     rooms: this.state.rooms.concat({name: this.state.formDisplay, messages: [{user: "", msg: "", time: ""}]})
+      // });
+
+      var ref = new Firebase("https://g20ie61vavx.firebaseio-demo.com/reactChat/rooms");
+      ref.push({name: this.state.formDisplay, messages: [{user: "", msg: "", time: ""}]});
+
+      //remove lightbox
       $('.lightbox1').css('display','none');
       this.setState({formDisplay: null});
     
   },
 
   addUser: function() {
+      if (this.state.formDisplay == null) {
+      return;
+      }
       this.setState({ 
           user: this.state.formDisplay
       });
+
+      
       $('.lightbox2').css('display','none');
       this.setState({formDisplay: null});
     
@@ -132,6 +187,29 @@ var Chat = React.createClass({
 
   handleChange: function(event) {
     this.setState({formDisplay: event.target.value});
+  },
+
+  handleSubmit: function(e) {
+    e.preventDefault();
+    var message = this.state.message.trim();
+    if (!message) {
+      return;
+    }
+    this.addMessage();
+    // send to firebase
+    this.setState({message: ''});
+  },
+
+  handleTextChange: function(e) {
+    this.setState({message: e.target.value});
+  },
+
+  openScreen: function() {
+    if (this.state.roomDisplay == null) {
+      return <h3>Welcome to React Chat</h3>
+    } else {
+      return <Room room={this.state.roomDisplay}/>
+    }
   },
 
 
@@ -143,8 +221,8 @@ var Chat = React.createClass({
          <table className="table">
           <tbody>
            <tr>
-              <td><h2>Bloc Chat</h2></td>
-              <td className="btnContainer"><button type="button" className="btn" onClick={this.pressLightboxOn}>New Room</button></td>
+              <td><h2>React Chat</h2></td>
+              <td className="btnContainer"><button type="button" className="btn" onClick={this.pressLightbox1On}>New Room</button></td>
            </tr>
           </tbody>
          </table>
@@ -154,7 +232,7 @@ var Chat = React.createClass({
         </div>
 
       <div className="col-sm-8">
-         <Room room={this.state.roomDisplay}/>
+         {this.openScreen()}
       </div>
 
       <div className="lightbox1">
@@ -165,14 +243,19 @@ var Chat = React.createClass({
              <button className="btn" onClick={this.pressLightbox1Off}>Cancel</button><button className="btn" onClick={this.addRoom}>Submit</button>
             </div>
       </div>
+
       <div className="lightbox2">
             <div className="newUserForm">
-            <h3>Create a Room</h3>
+            <h3>Create a Username</h3>
             Enter User Name Here
              <input type="text" value={this.state.formDisplay} onChange={this.handleChange}/><br/><br/>
-             <button className="btn" onClick={this.addUser}>Submit</button>
+             <button className="btn" onClick={this.addUser}>ok</button>
             </div>
       </div>
+
+      <form className="chatInput" onSubmit={this.handleSubmit}>
+      <input className="chat" type="text" maxLength={100} placeholder=" Enter Your Message Here" value={this.state.message} onChange={this.handleTextChange} /><input className="submit" type="submit" value="Send" />
+      </form>
 
     </div>;
     
