@@ -62,6 +62,8 @@ var Chat = React.createClass({
         roomDisplay: null,
         user: null,
         message: "",
+        reRender: "",
+        currentDisplay: null
       
         
       };
@@ -70,13 +72,8 @@ var Chat = React.createClass({
   componentWillMount: function() {
    var ref = new Firebase("https://g20ie61vavx.firebaseio-demo.com/reactChat/rooms");
    this.bindAsArray(ref, "rooms");
-
+   
   },
-
-  componentWillUpdate: function() {
- 
-  },
-
 
   componentDidMount() {
     this.hideLightbox1();
@@ -99,16 +96,26 @@ var Chat = React.createClass({
     var d = new Date().toLocaleTimeString('en-US', { hour12: true, hour: "numeric", minute: "numeric"});
     //add message to room
     
-    this.state.roomDisplay.messages.push({user: this.state.user, msg: this.state.message, time: d});
+    this.state.rooms[this.state.currentDisplay].messages.push({user: this.state.user, msg: this.state.message, time: d});
     
     var ref = new Firebase("https://g20ie61vavx.firebaseio-demo.com/reactChat/rooms");
+    
+    var onComplete = function(error) {
+        if (error) {
+          this.state.roomDisplay.messages.push({user: "Admin", msg: "Your message recieved an error", time: d});
+        } else {
+          console.log('Synchronization succeeded');
+        }
+      };
 
     if (this.state.roomDisplay[".key"]) {
-        var x = ref.child(this.state.roomDisplay[".key"]);
+        var x = ref.child(this.state.rooms[this.state.currentDisplay][".key"]);
         var y = x.child("messages");
-        y.set(this.state.roomDisplay.messages)
+        y.set(this.state.rooms[this.state.currentDisplay].messages, onComplete)
         
     } 
+
+
    
   
     
@@ -128,14 +135,14 @@ var Chat = React.createClass({
       var array = [];
       for (var i = 0; i < rooms.length; i++) {
 
-        array.push(<div onClick={this.clickHappened.bind(this, rooms[i])}>{rooms[i].name}</div>);
+        array.push(<div className="roomLink" onClick={this.clickHappened.bind(this, i)}>{rooms[i].name}</div>);
       }
       return array   
   },
 
-  clickHappened: function(room) {
-    this.setState({roomDisplay: room});
- 
+  clickHappened: function(num) {
+    this.setState({roomDisplay: this.state.rooms[num]});
+    this.setState({currentDisplay: num});
   },
 
   pressLightbox1On: function() {
@@ -157,13 +164,10 @@ var Chat = React.createClass({
   },
 
   addRoom: function() {
-      //add room and change state
-      // this.setState({ 
-      //     rooms: this.state.rooms.concat({name: this.state.formDisplay, messages: [{user: "", msg: "", time: ""}]})
-      // });
+     
 
       var ref = new Firebase("https://g20ie61vavx.firebaseio-demo.com/reactChat/rooms");
-      ref.push({name: this.state.formDisplay, messages: [{user: "", msg: "", time: ""}]});
+      ref.push({name: this.state.formDisplay, messages: [{user: "Admin", msg: "Welcome to " + this.state.formDisplay, time: ""}]});
 
       //remove lightbox
       $('.lightbox1').css('display','none');
@@ -208,7 +212,8 @@ var Chat = React.createClass({
     if (this.state.roomDisplay == null) {
       return <h3>Welcome to React Chat</h3>
     } else {
-      return <Room room={this.state.roomDisplay}/>
+
+      return <Room room={this.state.rooms[this.state.currentDisplay]}/>
     }
   },
 
@@ -221,7 +226,7 @@ var Chat = React.createClass({
          <table className="table">
           <tbody>
            <tr>
-              <td><h2>React Chat</h2></td>
+              <td><h2>React- Chat</h2></td>
               <td className="btnContainer"><button type="button" className="btn" onClick={this.pressLightbox1On}>New Room</button></td>
            </tr>
           </tbody>

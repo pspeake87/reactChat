@@ -82,7 +82,14 @@
   margin-bottom: 75px;
 }
 
+.roomLink {
+  font-size: 20px;
+}
 
+.roomLink:hover {
+  color: blue;
+  cursor: pointer;
+}
 
 .chat {
   
