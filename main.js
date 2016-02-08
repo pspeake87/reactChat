@@ -3,8 +3,8 @@
 var Messages = React.createClass({
     render: function() {
       return(
-
-          <tr>
+ 
+          <tr className={this.props.tag} >
             <td className="message"><h5 className="user">{this.props.room.user}</h5>
             {this.props.room.msg}</td>
             <td>{this.props.room.time}</td>
@@ -19,10 +19,14 @@ var Messages = React.createClass({
 var Room = React.createClass({
 
   renderMessages: function() {
-    
+     
       var array = [];
       for (var i = 0; i < this.props.room.messages.length; i++) {
-          array.push(<Messages room={this.props.room.messages[i]}/>);
+        if (i == this.props.room.messages.length -1) {
+          array.push(<Messages room={this.props.room.messages[i]} tag={"lastMessage"}/>);
+        } else {
+          array.push(<Messages room={this.props.room.messages[i]} tag={"messy"}/>);
+        }
       }
       return array
    
@@ -82,6 +86,10 @@ var Chat = React.createClass({
         
   },
 
+  componentDidUpdate: function() {
+     window.scrollTo(0, ($('.lastMessage').position().top));
+  },
+
 
   checkForUser: function() {
       if (this.state.user) {
@@ -115,10 +123,6 @@ var Chat = React.createClass({
         
     } 
 
-
-   
-  
-    
     
 
   },
@@ -202,6 +206,8 @@ var Chat = React.createClass({
     this.addMessage();
     // send to firebase
     this.setState({message: ''});
+    
+
   },
 
   handleTextChange: function(e) {
